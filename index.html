@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f0f1a" />
+  <title>🎵 음악 커리큘럼 매니저</title>
+  <meta name="description" content="초등 저학년 오카리나 & 우쿨렐레 20주 커리큘럼 스케줄 관리 앱" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.svg" />
+  <link rel="stylesheet" href="index.css" />
+</head>
+
+<body>
+  <div class="app" id="app">
+    <!-- Header -->
+    <header class="header">
+      <div>
+        <h1 class="header__title">🎵 음악 커리큘럼</h1>
+        <p class="header__subtitle">초등 저학년 · 20주 과정</p>
+      </div>
+      <div class="header__actions">
+        <button class="header__btn" id="btn-reset" title="데이터 초기화">🔄</button>
+      </div>
+    </header>
+
+    <!-- Bottom Navigation (serves as main tabs) -->
+    <nav class="tabs" id="main-tabs">
+      <button class="tab active" data-tab="calendar">📅 캘린더</button>
+      <button class="tab" data-tab="ocarina">🎵 오카리나</button>
+      <button class="tab" data-tab="ukulele">🎸 우쿨렐레</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Calendar View -->
+      <section class="view active" id="view-calendar">
+        <div class="stats" id="stats"></div>
+        <div class="calendar" id="calendar"></div>
+        <div class="day-events" id="day-events"></div>
+      </section>
+
+      <!-- Ocarina List View -->
+      <section class="view" id="view-ocarina">
+        <div id="ocarina-list"></div>
+      </section>
+
+      <!-- Ukulele List View -->
+      <section class="view" id="view-ukulele">
+        <div id="ukulele-list"></div>
+      </section>
+    </main>
+
+    <!-- FAB -->
+    <button class="fab" id="fab" title="수업 추가">＋</button>
+  </div>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal__handle"></div>
+      <h2 class="modal__title" id="modal-title">수업 추가</h2>
+      <form id="lesson-form">
+        <input type="hidden" id="form-id" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-instrument">악기</label>
+            <select id="form-instrument">
+              <option value="ocarina">🎵 오카리나</option>
+              <option value="ukulele">🎸 우쿨렐레</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="form-week">주차</label>
+            <input type="number" id="form-week" min="1" max="99" placeholder="1" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="form-title">수업 주제</label>
+          <input type="text" id="form-title" placeholder="예: 오카리나와 친해지기" />
+        </div>
+        <div class="form-group">
+          <label for="form-desc">세부 내용</label>
+          <textarea id="form-desc" rows="3" placeholder="수업 세부 내용을 적어주세요"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-song">학습 곡(선택)</label>
+            <input type="text" id="form-song" placeholder="예: 비행기" />
+          </div>
+          <div class="form-group">
+            <label for="form-date">수업 날짜(선택)</label>
+            <input type="date" id="form-date" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="form-status">진행 상태</label>
+          <select id="form-status">
+            <option value="upcoming">예정</option>
+            <option value="done">완료</option>
+          </select>
+        </div>
+        <div class="modal__btns">
+          <button type="button" class="btn btn--cancel" id="btn-cancel">취소</button>
+          <button type="submit" class="btn btn--save">저장</button>
+        </div>
+        <div class="modal__btns" id="delete-row" style="display:none;">
+          <button type="button" class="btn btn--delete" id="btn-delete">🗑️ 이 수업 삭제</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-dialog">
+      <div class="confirm-dialog__title" id="confirm-title">확인</div>
+      <div class="confirm-dialog__msg" id="confirm-msg">정말 삭제하시겠습니까?</div>
+      <div class="confirm-dialog__btns">
+        <button class="btn btn--cancel" id="confirm-no">아니오</button>
+        <button class="btn btn--delete" id="confirm-yes">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    /* ===========================================
+       Music Curriculum Manager – App Logic
+       =========================================== */
+    (() => {
+      'use strict';
+
+      // ─── Default Curriculum Data ───
+      const DEFAULT_OCARINA = [
+        { week: 1, title: "오카리나와 친해지기", desc: "악기 소개, 구조 알기, 바른 자세와 악기 쥐는 법", song: "(탐색 및 소리 내보기)" },
+        { week: 2, title: "예쁜 소리 만들기", desc: "텅잉(Tu) 기초, 호흡법, '솔, 라, 시' 운지 익히기", song: "비행기 (앞부분)" },
+        { week: 3, title: "기초 음계 다지기 1", desc: "'도, 레, 미, 파' 운지 익히기, 롱톤 연습", song: "비행기 (완곡)" },
+        { week: 4, title: "기초 음계 다지기 2", desc: "높은 '도, 레' 운지법, 낮은음과 높은음 오가기", song: "학교 종" },
+        { week: 5, title: "리듬과 박자 놀이", desc: "4분음표, 2분음표 익히기, 박자에 맞춰 텅잉하기", song: "나비야" },
+        { week: 6, title: "왈츠 리듬 배우기", desc: "3/4박자 리듬감 익히기, 부드러운 호흡 연습", song: "뻐꾸기" },
+        { week: 7, title: "쉼표의 미학", desc: "쉼표 지키기, 호흡 조절하며 끊어 불기", song: "산토끼" },
+        { week: 8, title: "낮은 음 정복하기", desc: "낮은 '시, 라' 운지법, 호흡을 안정적으로 내리기", song: "작은 별" },
+        { week: 9, title: "중간 점검 및 복습", desc: "지금까지 배운 운지법 총정리, 좋아하는 곡 연주", song: "(배운 곡 중 선택)" },
+        { week: 10, title: "스타카토 익히기", desc: "짧고 경쾌하게 텅잉하기 (Tut), 리듬감 살리기", song: "거미" },
+        { week: 11, title: "이음줄(Slur) 연주", desc: "부드럽게 이어서 불기, 텅잉 없이 음 연결하기", song: "아빠 힘내세요" },
+        { week: 12, title: "점음표 리듬 배우기", desc: "점4분음표 리듬감(딴~따) 익히기", song: "곰 세 마리" },
+        { week: 13, title: "높은 음 도전하기", desc: "높은 '미, 파' 운지법 (필요 시), 고음역대 호흡", song: "얼굴 찌푸리지 말아요" },
+        { week: 14, title: "셈여림 표현하기", desc: "크레센도(점점 세게), 데크레센도(점점 여리게) 맛보기", song: "고향의 봄" },
+        { week: 15, title: "2중주 맛보기", desc: "두 그룹으로 나누어 화음의 재미 느끼기", song: "(쉬운 동요 2성부)" },
+        { week: 16, title: "나의 18번 만들기 1", desc: "발표회 곡 선정 및 악보 리딩", song: "(자유곡 선정)" },
+        { week: 17, title: "나의 18번 만들기 2", desc: "구간 반복 연습, 안 되는 부분 집중 레슨", song: "(자유곡 선정)" },
+        { week: 18, title: "앙상블 연습", desc: "친구들과 호흡 맞추기, 박자 맞추기", song: "(합주곡)" },
+        { week: 19, title: "리허설", desc: "발표회 예행 연습, 무대 매너(인사법) 배우기", song: "전체 곡" },
+        { week: 20, title: "작은 음악회", desc: "그동안 배운 곡 발표 및 수료 파티", song: "-" },
+      ];
+
+      const DEFAULT_UKULELE = [
+        { week: 1, title: "우쿨렐레와 안녕?", desc: "악기 명칭, 안는 자세, 줄(현) 번호 알기, 개방현 튕기기", song: "(줄 튕겨보기 놀이)" },
+        { week: 2, title: "첫 번째 코드 'C'", desc: "왼손 손가락 번호, C코드 잡기, 엄지 스트로크(다운)", song: "곰 세 마리" },
+        { week: 3, title: "친구 코드 'F'", desc: "F코드 운지법, C-F 코드 연결 연습", song: "거미" },
+        { week: 4, title: "아기 코드 'C7'", desc: "C7코드 운지법, 코드 체인지 연습 (C-C7-F)", song: "솜사탕" },
+        { week: 5, title: "4비트 리듬 치기", desc: "검지 스트로크(다운-업), 4비트 고고 리듬", song: "나비야" },
+        { week: 6, title: "국민 코드 'G7'", desc: "G7코드 운지법(조금 어려움, 반복 연습), C-F-G7 진행", song: "올챙이와 개구리" },
+        { week: 7, title: "8비트 리듬 맛보기", desc: "다운-업 스트로크 연결, 8비트 고고 리듬 기초", song: "동물농장" },
+        { week: 8, title: "왈츠 리듬 배우기", desc: "3/4박자 '쿵-짝-짝' 리듬 치기", song: "생일 축하합니다" },
+        { week: 9, title: "칼립소 리듬 1", desc: "다운-다운업-업-다운업 (가장 중요한 리듬) 입으로 익히기", song: "(리듬 집중 연습)" },
+        { week: 10, title: "칼립소 리듬 2", desc: "칼립소 리듬을 곡에 적용하기", song: "조개 껍질 묶어" },
+        { week: 11, title: "'Am' 코드와 마이너", desc: "Am, Dm 코드 익히기, 슬픈 느낌의 곡 쳐보기", song: "칠갑산(멜로디만)" },
+        { week: 12, title: "셔플 리듬", desc: "깡충깡충 뛰는 리듬(스윙) 느낌 살리기", song: "숲 속의 음악가" },
+        { week: 13, title: "타브(TAB) 악보 보기", desc: "멜로디 연주 기초, 계이름 '도레미파솔라시도' 찾기", song: "학교 종 (멜로디)" },
+        { week: 14, title: "멜로디와 반주", desc: "선생님 반주에 맞춰 멜로디 쳐보기", song: "작은 별" },
+        { week: 15, title: "컷팅 주법 1", desc: "오른손 컷팅(착!), 리듬에 악센트 넣기", song: "멋쟁이 토마토" },
+        { week: 16, title: "나의 애창곡 연습 1", desc: "발표회 곡 선정, 코드 진행 반복 숙달", song: "(자유곡 선정)" },
+        { week: 17, title: "나의 애창곡 연습 2", desc: "노래 부르며 연주하기(탄현과 가창의 조화)", song: "(자유곡 선정)" },
+        { week: 18, title: "합주 연습", desc: "그룹별 연습 (멜로디 파트 / 반주 파트)", song: "(합주곡)" },
+        { week: 19, title: "리허설", desc: "모의 발표회, 서로 들어주고 박수치기", song: "전체 곡" },
+        { week: 20, title: "작은 음악회", desc: "연주 발표 및 수료식", song: "-" },
+      ];
+
+      // ─── Storage ───
+      const STORAGE_KEY = 'music_curriculum_data';
+
+      function loadData() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+        return initDefaultData();
+      }
+
+      function saveData(data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+
+      function initDefaultData() {
+        let id = 1;
+        const lessons = [];
+        // Start date: next Monday from today
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const nextMonday = new Date(today);
+        nextMonday.setDate(today.getDate() + (dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek));
+
+        DEFAULT_OCARINA.forEach((l, i) => {
+          const d = new Date(nextMonday);
+          d.setDate(d.getDate() + i * 7);
+          lessons.push({
+            id: id++,
+            instrument: 'ocarina',
+            week: l.week,
+            title: l.title,
+            desc: l.desc,
+            song: l.song,
+            date: formatDate(d),
+            status: 'upcoming',
+          });
+        });
+
+        DEFAULT_UKULELE.forEach((l, i) => {
+          const d = new Date(nextMonday);
+          d.setDate(d.getDate() + i * 7);
+          lessons.push({
+            id: id++,
+            instrument: 'ukulele',
+            week: l.week,
+            title: l.title,
+            desc: l.desc,
+            song: l.song,
+            date: formatDate(d),
+            status: 'upcoming',
+          });
+        });
+
+        const data = { lessons, nextId: id };
+        saveData(data);
+        return data;
+      }
+
+      // ─── Helpers ───
+      function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dd}`;
+      }
+
+      function toDateObj(str) {
+        if (!str) return null;
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      }
+
+      function koreanDate(str) {
+        if (!str) return '';
+        const d = toDateObj(str);
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+      }
+
+      // ─── State ───
+      let data = loadData();
+      let currentTab = 'calendar';
+      let calYear, calMonth; // 0-indexed month
+      let selectedDate = null;
+      let editingId = null;
+
+      const todayObj = new Date();
+      calYear = todayObj.getFullYear();
+      calMonth = todayObj.getMonth();
+
+      // ─── DOM References ───
+      const $tabs = document.querySelectorAll('#main-tabs .tab');
+      const $views = document.querySelectorAll('.view');
+      const $calendar = document.getElementById('calendar');
+      const $dayEvents = document.getElementById('day-events');
+      const $stats = document.getElementById('stats');
+      const $ocarList = document.getElementById('ocarina-list');
+      const $ukuList = document.getElementById('ukulele-list');
+      const $fab = document.getElementById('fab');
+      const $modalOvl = document.getElementById('modal-overlay');
+      const $modal = document.getElementById('modal');
+      const $modalTitle = document.getElementById('modal-title');
+      const $form = document.getElementById('lesson-form');
+      const $deleteRow = document.getElementById('delete-row');
+      const $confirmOvl = document.getElementById('confirm-overlay');
+      const $toast = document.getElementById('toast');
+
+      // Form fields
+      const $fId = document.getElementById('form-id');
+      const $fInstrument = document.getElementById('form-instrument');
+      const $fWeek = document.getElementById('form-week');
+      const $fTitle = document.getElementById('form-title');
+      const $fDesc = document.getElementById('form-desc');
+      const $fSong = document.getElementById('form-song');
+      const $fDate = document.getElementById('form-date');
+      const $fStatus = document.getElementById('form-status');
+
+      // ─── Tab Switching ───
+      $tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          currentTab = tab.dataset.tab;
+          $tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          $views.forEach(v => v.classList.remove('active'));
+          document.getElementById(`view-${currentTab}`).classList.add('active');
+          render();
+        });
+      });
+
+      // ─── Calendar Rendering ───
+      function renderCalendar() {
+        const firstDay = new Date(calYear, calMonth, 1).getDay(); // 0=Sun
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월',
+          '7월', '8월', '9월', '10월', '11월', '12월'];
+        const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+
+        // Build lesson lookup for this month
+        const lessonsByDay = {};
+        data.lessons.forEach(l => {
+          if (!l.date) return;
+          const d = toDateObj(l.date);
+          if (d.getFullYear() === calYear && d.getMonth() === calMonth) {
+            const day = d.getDate();
+            if (!lessonsByDay[day]) lessonsByDay[day] = [];
+            lessonsByDay[day].push(l);
+          }
+        });
+
+        const todayStr = formatDate(todayObj);
+
+        let html = `
+        <div class="calendar__nav">
+          <button class="calendar__arrow" id="cal-prev">◀</button>
+          <span class="calendar__month">${calYear}년 ${monthNames[calMonth]}</span>
+          <button class="calendar__arrow" id="cal-next">▶</button>
+        </div>
+        <div class="calendar__grid">
+      `;
+
+        dayLabels.forEach(d => {
+          html += `<div class="calendar__day-label">${d}</div>`;
+        });
+
+        for (let i = 0; i < firstDay; i++) {
+          html += `<div class="calendar__day empty"></div>`;
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const isToday = dateStr === todayStr;
+          const isSelected = dateStr === selectedDate;
+          const lessons = lessonsByDay[d] || [];
+          const hasOcarina = lessons.some(l => l.instrument === 'ocarina');
+          const hasUkulele = lessons.some(l => l.instrument === 'ukulele');
+
+          let cls = 'calendar__day';
+          if (isToday) cls += ' today';
+          if (isSelected) cls += ' selected';
+
+          let dots = '';
+          if (hasOcarina || hasUkulele) {
+            dots = '<div class="calendar__dots">';
+            if (hasOcarina) dots += '<span class="calendar__dot calendar__dot--ocarina"></span>';
+            if (hasUkulele) dots += '<span class="calendar__dot calendar__dot--ukulele"></span>';
+            dots += '</div>';
+          }
+
+          html += `<div class="${cls}" data-date="${dateStr}">${d}${dots}</div>`;
+        }
+
+        html += '</div>';
+        $calendar.innerHTML = html;
+
+        // Nav events
+        document.getElementById('cal-prev').addEventListener('click', () => {
+          calMonth--;
+          if (calMonth < 0) { calMonth = 11; calYear--; }
+          selectedDate = null;
+          renderCalendar();
+          renderDayEvents();
+        });
+        document.getElementById('cal-next').addEventListener('click', () => {
+          calMonth++;
+          if (calMonth > 11) { calMonth = 0; calYear++; }
+          selectedDate = null;
+          renderCalendar();
+          renderDayEvents();
+        });
+
+        // Day click
+        $calendar.querySelectorAll('.calendar__day:not(.empty)').forEach(el => {
+          el.addEventListener('click', () => {
+            selectedDate = el.dataset.date;
+            renderCalendar();
+            renderDayEvents();
+          });
+        });
+      }
+
+      function renderDayEvents() {
+        if (!selectedDate) {
+          $dayEvents.innerHTML = '';
+          return;
+        }
+
+        const lessons = data.lessons.filter(l => l.date === selectedDate);
+        let html = `<div class="day-events__title">📌 ${koreanDate(selectedDate)}</div>`;
+
+        if (lessons.length === 0) {
+          html += `<div class="day-events__empty">이 날에 예정된 수업이 없습니다</div>`;
+        } else {
+          lessons.forEach(l => { html += renderLessonCard(l); });
+        }
+
+        $dayEvents.innerHTML = html;
+        attachCardEvents($dayEvents);
+      }
+
+      function renderStats() {
+        const ocaDone = data.lessons.filter(l => l.instrument === 'ocarina' && l.status === 'done').length;
+        const ocaTotal = data.lessons.filter(l => l.instrument === 'ocarina').length;
+        const ukuDone = data.lessons.filter(l => l.instrument === 'ukulele' && l.status === 'done').length;
+        const ukuTotal = data.lessons.filter(l => l.instrument === 'ukulele').length;
+
+        $stats.innerHTML = `
+        <div class="stat-card stat-card--ocarina">
+          <div class="stat-card__label">🎵 오카리나 진행률</div>
+          <div class="stat-card__value">${ocaDone} / ${ocaTotal}</div>
+        </div>
+        <div class="stat-card stat-card--ukulele">
+          <div class="stat-card__label">🎸 우쿨렐레 진행률</div>
+          <div class="stat-card__value">${ukuDone} / ${ukuTotal}</div>
+        </div>
+      `;
+      }
+
+      // ─── Lesson Card HTML ───
+      function renderLessonCard(l) {
+        const statusHtml = l.status === 'done'
+          ? '<span class="lesson-card__status lesson-card__status--done">✅ 완료</span>'
+          : '<span class="lesson-card__status lesson-card__status--upcoming">⏳ 예정</span>';
+
+        return `
+        <div class="lesson-card lesson-card--${l.instrument}" data-id="${l.id}">
+          <div class="lesson-card__header">
+            <span class="lesson-card__week">${l.instrument === 'ocarina' ? '🎵' : '🎸'} ${l.week}주차</span>
+            <div class="lesson-card__actions">
+              <button class="lesson-card__action" data-action="edit" data-id="${l.id}" title="수정">✏️</button>
+              <button class="lesson-card__action lesson-card__action--delete" data-action="delete" data-id="${l.id}" title="삭제">🗑️</button>
+            </div>
+          </div>
+          <div class="lesson-card__title">${l.title}</div>
+          <div class="lesson-card__desc">${l.desc}</div>
+          ${l.song ? `<span class="lesson-card__song">♪ ${l.song}</span>` : ''}
+          <div class="lesson-card__date">
+            ${l.date ? `📅 ${koreanDate(l.date)}` : '📅 날짜 미정'}
+            ${statusHtml}
+          </div>
+        </div>
+      `;
+      }
+
+      function attachCardEvents(container) {
+        container.querySelectorAll('[data-action="edit"]').forEach(btn => {
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            openEditModal(Number(btn.dataset.id));
+          });
+        });
+        container.querySelectorAll('[data-action="delete"]').forEach(btn => {
+          btn.addEventListener('click', e => {
+            e.stopPropagation();
+            confirmDelete(Number(btn.dataset.id));
+          });
+        });
+        // Toggle done/upcoming on card click
+        container.querySelectorAll('.lesson-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const id = Number(card.dataset.id);
+            const lesson = data.lessons.find(l => l.id === id);
+            if (lesson) {
+              lesson.status = lesson.status === 'done' ? 'upcoming' : 'done';
+              saveData(data);
+              showToast(lesson.status === 'done' ? '✅ 완료 처리!' : '⏳ 예정으로 변경', 'success');
+              render();
+            }
+          });
+        });
+      }
+
+      // ─── List Rendering ───
+      function renderList(instrument, container) {
+        const lessons = data.lessons
+          .filter(l => l.instrument === instrument)
+          .sort((a, b) => a.week - b.week);
+
+        if (lessons.length === 0) {
+          container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state__icon">${instrument === 'ocarina' ? '🎵' : '🎸'}</div>
+            <div class="empty-state__text">등록된 수업이 없습니다.<br>＋ 버튼으로 추가해 보세요!</div>
+          </div>
+        `;
+          return;
+        }
+
+        container.innerHTML = lessons.map(renderLessonCard).join('');
+        attachCardEvents(container);
+      }
+
+      // ─── Modal ───
+      function openAddModal() {
+        editingId = null;
+        $modalTitle.textContent = '수업 추가';
+        $deleteRow.style.display = 'none';
+        $fId.value = '';
+        $fInstrument.value = currentTab === 'ukulele' ? 'ukulele' : 'ocarina';
+        $fWeek.value = '';
+        $fTitle.value = '';
+        $fDesc.value = '';
+        $fSong.value = '';
+        $fDate.value = '';
+        $fStatus.value = 'upcoming';
+        $modalOvl.classList.add('active');
+      }
+
+      function openEditModal(id) {
+        const lesson = data.lessons.find(l => l.id === id);
+        if (!lesson) return;
+        editingId = id;
+        $modalTitle.textContent = '수업 수정';
+        $deleteRow.style.display = 'flex';
+        $fId.value = id;
+        $fInstrument.value = lesson.instrument;
+        $fWeek.value = lesson.week;
+        $fTitle.value = lesson.title;
+        $fDesc.value = lesson.desc;
+        $fSong.value = lesson.song || '';
+        $fDate.value = lesson.date || '';
+        $fStatus.value = lesson.status;
+        $modalOvl.classList.add('active');
+      }
+
+      function closeModal() {
+        $modalOvl.classList.remove('active');
+        editingId = null;
+      }
+
+      // ─── Form Submit ───
+      $form.addEventListener('submit', e => {
+        e.preventDefault();
+        const instrument = $fInstrument.value;
+        const week = parseInt($fWeek.value) || 1;
+        const title = $fTitle.value.trim();
+        const desc = $fDesc.value.trim();
+        const song = $fSong.value.trim();
+        const date = $fDate.value;
+        const status = $fStatus.value;
+
+        if (!title) {
+          showToast('수업 주제를 입력해 주세요', 'error');
+          return;
+        }
+
+        if (editingId) {
+          const lesson = data.lessons.find(l => l.id === editingId);
+          if (lesson) {
+            Object.assign(lesson, { instrument, week, title, desc, song, date, status });
+            showToast('✏️ 수업이 수정되었습니다', 'success');
+          }
+        } else {
+          data.lessons.push({
+            id: data.nextId++,
+            instrument, week, title, desc, song, date, status,
+          });
+          showToast('✅ 수업이 추가되었습니다', 'success');
+        }
+
+        saveData(data);
+        closeModal();
+        render();
+      });
+
+      // ─── Delete ───
+      let pendingDeleteId = null;
+
+      function confirmDelete(id) {
+        pendingDeleteId = id;
+        document.getElementById('confirm-title').textContent = '확인';
+        document.getElementById('confirm-msg').textContent = '정말 삭제하시겠습니까?';
+        document.getElementById('confirm-yes').textContent = '삭제';
+        $confirmOvl.classList.add('active');
+      }
+
+      document.getElementById('confirm-yes').addEventListener('click', () => {
+        if (pendingDeleteId === '__reset__') {
+          localStorage.removeItem(STORAGE_KEY);
+          data = initDefaultData();
+          showToast('🔄 초기화 완료!', 'success');
+          render();
+        } else if (pendingDeleteId != null) {
+          data.lessons = data.lessons.filter(l => l.id !== pendingDeleteId);
+          saveData(data);
+          showToast('🗑️ 삭제되었습니다', 'success');
+          closeModal();
+          render();
+        }
+        pendingDeleteId = null;
+        $confirmOvl.classList.remove('active');
+      });
+
+      document.getElementById('confirm-no').addEventListener('click', () => {
+        pendingDeleteId = null;
+        $confirmOvl.classList.remove('active');
+      });
+
+      document.getElementById('btn-delete').addEventListener('click', () => {
+        if (editingId) confirmDelete(editingId);
+      });
+
+      // ─── Toast ───
+      let toastTimer;
+      function showToast(msg, type = 'success') {
+        $toast.textContent = msg;
+        $toast.className = `toast toast--${type} visible`;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { $toast.classList.remove('visible'); }, 2200);
+      }
+
+      // ─── Reset ───
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        pendingDeleteId = '__reset__';
+        document.getElementById('confirm-title').textContent = '초기화';
+        document.getElementById('confirm-msg').textContent = '모든 데이터를 기본 커리큘럼으로 초기화할까요?';
+        document.getElementById('confirm-yes').textContent = '초기화';
+        $confirmOvl.classList.add('active');
+      });
+
+      // ─── Events ───
+      $fab.addEventListener('click', openAddModal);
+      document.getElementById('btn-cancel').addEventListener('click', closeModal);
+      $modalOvl.addEventListener('click', e => { if (e.target === $modalOvl) closeModal(); });
+
+      // ─── Master Render ───
+      function render() {
+        renderStats();
+        renderCalendar();
+        renderDayEvents();
+        renderList('ocarina', $ocarList);
+        renderList('ukulele', $ukuList);
+      }
+
+      // Initial render
+      render();
+
+    })();
+  </script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.log('SW registration failed:', err));
+    }
+  </script>
+</body>
+
+</html>
