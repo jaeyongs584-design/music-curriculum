@@ -409,13 +409,24 @@
         if (!el) return;
         const lessons = data.lessons.filter(l => l.instrument === instId).sort((a, b) => a.week - b.week);
         const inst = getInst(instId);
+        let headerHtml = `<div class="inst-header">
+          <span class="inst-header__title">${inst ? inst.emoji : '🎵'} ${inst ? inst.name : ''} (${lessons.length}개 수업)</span>
+          <button class="inst-header__delete" data-del-inst="${instId}" title="이 악기 삭제">🗑️ 악기 삭제</button>
+        </div>`;
         if (!lessons.length) {
-          el.innerHTML = `<div class="empty-state"><div class="empty-state__icon">${inst ? inst.emoji : '🎵'}</div>
+          el.innerHTML = headerHtml + `<div class="empty-state"><div class="empty-state__icon">${inst ? inst.emoji : '🎵'}</div>
           <div class="empty-state__text">등록된 수업이 없습니다.<br>＋ 버튼으로 추가해 보세요!</div></div>`;
-          return;
+        } else {
+          el.innerHTML = headerHtml + lessons.map(renderCard).join('');
+          attachCardEvents(el);
         }
-        el.innerHTML = lessons.map(renderCard).join('');
-        attachCardEvents(el);
+        el.querySelector('[data-del-inst]')?.addEventListener('click', () => {
+          pendingDeleteId = '__del_inst__' + instId;
+          $('confirm-title').textContent = '악기 삭제';
+          $('confirm-msg').textContent = `"${inst ? inst.name : instId}" 악기와 모든 수업(${lessons.length}개)을 삭제할까요?`;
+          $('confirm-yes').textContent = '삭제';
+          $confirmOvl.classList.add('active');
+        });
       }
 
       // ═══ LESSON MODAL ═══
@@ -693,6 +704,14 @@
           data = initDefaultData();
           currentTab = 'calendar';
           showToast('🔄 초기화 완료!');
+          renderTabs(); renderViews(); render();
+        } else if (typeof pendingDeleteId === 'string' && pendingDeleteId.startsWith('__del_inst__')) {
+          const instId = pendingDeleteId.slice(12);
+          data.instruments = data.instruments.filter(i => i.id !== instId);
+          data.lessons = data.lessons.filter(l => l.instrument !== instId);
+          saveData(data);
+          currentTab = 'calendar';
+          showToast('🗑️ 악기가 삭제되었습니다');
           renderTabs(); renderViews(); render();
         } else if (pendingDeleteId != null) {
           data.lessons = data.lessons.filter(l => l.id !== pendingDeleteId);

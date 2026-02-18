@@ -1091,3 +1091,33 @@ select {
   color: var(--text-muted);
   margin-top: 2px;
 }
+
+/* ---------- Instrument header with delete ---------- */
+.inst-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 8px 0;
+}
+
+.inst-header__title {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.inst-header__delete {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.inst-header__delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
