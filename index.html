@@ -142,42 +142,48 @@
 
       function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-      function generateLessons(templateKey, instrumentId, weekCount, startId) {
+      function calcDates(startDate, totalLessons, freq) {
+        const dates = [];
+        const start = startDate ? new Date(startDate) : new Date();
+        if (!startDate) {
+          const dow = start.getDay();
+          start.setDate(start.getDate() + (dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow));
+        }
+        let cur = new Date(start);
+        for (let i = 0; i < totalLessons; i++) {
+          dates.push(new Date(cur));
+          if (freq === 1) { cur.setDate(cur.getDate() + 7); }
+          else if (freq === 2) { cur.setDate(cur.getDate() + (i % 2 === 0 ? 3 : 4)); }
+          else { const gaps = [2, 2, 3]; cur.setDate(cur.getDate() + gaps[i % 3]); }
+        }
+        return dates;
+      }
+
+      function generateLessons(templateKey, instrumentId, weekCount, startId, startDate, freq) {
         const t = TEMPLATES[templateKey];
         if (!t) return { lessons: [], nextId: startId };
-        const today = new Date();
-        const dow = today.getDay();
-        const nm = new Date(today);
-        nm.setDate(today.getDate() + (dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow));
-        let id = startId;
-        const lessons = [];
+        const f = freq || 1;
         const weeks = t.weeks.slice(0, weekCount);
-        weeks.forEach((w, i) => {
-          const d = new Date(nm);
-          d.setDate(d.getDate() + i * 7);
-          lessons.push({
-            id: id++, instrument: instrumentId, week: w.week,
-            title: w.title, desc: w.desc, song: w.song,
-            date: formatDate(d), status: 'upcoming'
-          });
-        });
+        const dates = calcDates(startDate, weeks.length, f);
+        let id = startId;
+        const lessons = weeks.map((w, i) => ({
+          id: id++, instrument: instrumentId, week: w.week,
+          title: w.title, desc: w.desc, song: w.song,
+          date: formatDate(dates[i]), status: 'upcoming'
+        }));
         return { lessons, nextId: id };
       }
 
-      function generateEmptyLessons(instrumentId, weekCount, startId) {
-        const today = new Date();
-        const dow = today.getDay();
-        const nm = new Date(today);
-        nm.setDate(today.getDate() + (dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow));
+      function generateEmptyLessons(instrumentId, weekCount, startId, startDate, freq) {
+        const f = freq || 1;
+        const dates = calcDates(startDate, weekCount, f);
         let id = startId;
         const lessons = [];
         for (let i = 0; i < weekCount; i++) {
-          const d = new Date(nm);
-          d.setDate(d.getDate() + i * 7);
           lessons.push({
             id: id++, instrument: instrumentId, week: i + 1,
             title: `${i + 1}주차 수업`, desc: '수업 내용을 입력해 주세요',
-            song: '', date: formatDate(d), status: 'upcoming'
+            song: '', date: formatDate(dates[i]), status: 'upcoming'
           });
         }
         return { lessons, nextId: id };
@@ -499,31 +505,60 @@
 
       function renderRegStep2() {
         const t = TEMPLATES[regSelectedKey];
+        const todayStr = formatDate(new Date());
         let html = `<h2 class="modal__title">${t.emoji} ${t.name} 등록</h2>
-        <p class="reg-subtitle">커리큘럼 주차를 선택하세요</p>
+        <p class="reg-subtitle">커리큘럼 설정</p>
+        <div class="form-group"><label>주차 선택</label>
         <div class="week-grid">`;
         for (let w = 4; w <= t.max; w += 4) {
-          html += `<button class="week-btn" data-weeks="${w}">
+          html += `<button type="button" class="week-btn ${w === 4 ? 'active' : ''}" data-weeks="${w}">
           <span class="week-btn__num">${w}주</span>
           <span class="week-btn__desc">${t.weeks[w - 1] ? t.weeks[w - 1].title : ''}</span>
         </button>`;
         }
-        html += `</div>
+        html += `</div></div>
+        <div class="form-row">
+          <div class="form-group"><label>시작일</label>
+            <input type="date" id="reg-start-date" value="${todayStr}" />
+          </div>
+          <div class="form-group"><label>주당 횟수</label>
+            <div class="freq-grid">
+              <button type="button" class="freq-btn active" data-freq="1">주 1회</button>
+              <button type="button" class="freq-btn" data-freq="2">주 2회</button>
+              <button type="button" class="freq-btn" data-freq="3">주 3회</button>
+            </div>
+          </div>
+        </div>
         <div class="modal__btns">
           <button type="button" class="btn btn--cancel" id="reg-back">← 뒤로</button>
+          <button type="button" class="btn btn--save" id="reg-next">다음 →</button>
         </div>`;
         $regContent.innerHTML = html;
-        $('reg-back').addEventListener('click', renderRegStep1);
+
+        let selWeeks = 4, selFreq = 1;
+
         $regContent.querySelectorAll('.week-btn').forEach(btn => {
           btn.addEventListener('click', () => {
-            const weeks = Number(btn.dataset.weeks);
-            renderRegStep3(regSelectedKey, weeks);
+            $regContent.querySelectorAll('.week-btn').forEach(x => x.classList.remove('active'));
+            btn.classList.add('active'); selWeeks = Number(btn.dataset.weeks);
           });
+        });
+        $regContent.querySelectorAll('.freq-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            $regContent.querySelectorAll('.freq-btn').forEach(x => x.classList.remove('active'));
+            btn.classList.add('active'); selFreq = Number(btn.dataset.freq);
+          });
+        });
+
+        $('reg-back').addEventListener('click', renderRegStep1);
+        $('reg-next').addEventListener('click', () => {
+          const startDate = $('reg-start-date').value;
+          renderRegStep3(regSelectedKey, selWeeks, startDate, selFreq);
         });
       }
 
       function renderRegStepCustom() {
-        const randomColor = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
+        const todayStr = formatDate(new Date());
         let html = `<h2 class="modal__title">✏️ 커스텀 악기 등록</h2>
         <div class="form-group"><label>악기 이름</label>
           <input type="text" id="reg-name" placeholder="예: 하모니카" /></div>
@@ -539,13 +574,25 @@
           <div class="week-grid week-grid--small">
             ${[4, 8, 12, 16, 20, 24, 28, 32, 36, 40].map((w, i) => `<button type="button" class="week-btn week-btn--sm ${i === 0 ? 'active' : ''}" data-weeks="${w}">${w}주</button>`).join('')}
           </div></div>
+        <div class="form-row">
+          <div class="form-group"><label>시작일</label>
+            <input type="date" id="reg-cstart-date" value="${todayStr}" />
+          </div>
+          <div class="form-group"><label>주당 횟수</label>
+            <div class="freq-grid">
+              <button type="button" class="freq-btn active" data-freq="1">주 1회</button>
+              <button type="button" class="freq-btn" data-freq="2">주 2회</button>
+              <button type="button" class="freq-btn" data-freq="3">주 3회</button>
+            </div>
+          </div>
+        </div>
         <div class="modal__btns">
           <button type="button" class="btn btn--cancel" id="reg-back2">← 뒤로</button>
           <button type="button" class="btn btn--save" id="reg-custom-ok">등록</button>
         </div>`;
         $regContent.innerHTML = html;
 
-        let selEmoji = CUSTOM_EMOJIS[0], selColor = COLOR_PALETTE[0].color, selColor2 = COLOR_PALETTE[0].color2, selWeeks = 4;
+        let selEmoji = CUSTOM_EMOJIS[0], selColor = COLOR_PALETTE[0].color, selColor2 = COLOR_PALETTE[0].color2, selWeeks = 4, selFreq = 1;
 
         $regContent.querySelectorAll('.emoji-btn').forEach(b => {
           b.addEventListener('click', () => {
@@ -565,15 +612,22 @@
             b.classList.add('active'); selWeeks = Number(b.dataset.weeks);
           });
         });
+        $regContent.querySelectorAll('.freq-btn').forEach(b => {
+          b.addEventListener('click', () => {
+            $regContent.querySelectorAll('.freq-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active'); selFreq = Number(b.dataset.freq);
+          });
+        });
 
         $('reg-back2').addEventListener('click', renderRegStep1);
         $('reg-custom-ok').addEventListener('click', () => {
           const name = $('reg-name').value.trim();
           if (!name) { showToast('악기 이름을 입력해 주세요', 'error'); return; }
+          const startDate = $('reg-cstart-date').value;
           const id = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
           const inst = { id, name, emoji: selEmoji, color: selColor, color2: selColor2 };
           data.instruments.push(inst);
-          const r = generateEmptyLessons(id, selWeeks, data.nextId);
+          const r = generateEmptyLessons(id, selWeeks, data.nextId, startDate, selFreq);
           data.lessons = data.lessons.concat(r.lessons);
           data.nextId = r.nextId;
           saveData(data);
@@ -584,17 +638,20 @@
         });
       }
 
-      function renderRegStep3(templateKey, weekCount) {
+      function renderRegStep3(templateKey, weekCount, startDate, freq) {
         const t = TEMPLATES[templateKey];
         const preview = t.weeks.slice(0, weekCount);
-        let html = `<h2 class="modal__title">${t.emoji} ${t.name} · ${weekCount}주 커리큘럼</h2>
-        <p class="reg-subtitle">커리큘럼 미리보기</p>
+        const dates = calcDates(startDate, preview.length, freq || 1);
+        const freqLabel = freq === 3 ? '주 3회' : freq === 2 ? '주 2회' : '주 1회';
+        let html = `<h2 class="modal__title">${t.emoji} ${t.name} · ${weekCount}주</h2>
+        <p class="reg-subtitle">📅 시작: ${koreanDate(startDate)} · ${freqLabel}</p>
         <div class="preview-list">`;
-        preview.forEach(w => {
+        preview.forEach((w, i) => {
           html += `<div class="preview-item">
           <span class="preview-item__week">${w.week}주차</span>
           <div><div class="preview-item__title">${w.title}</div>
-          <div class="preview-item__desc">${w.desc}</div></div>
+          <div class="preview-item__desc">${w.desc}</div>
+          <div class="preview-item__date">📅 ${koreanDate(formatDate(dates[i]))}</div></div>
         </div>`;
         });
         html += `</div>
@@ -608,7 +665,7 @@
           const uniqueId = templateKey + '_' + Date.now();
           const inst = { id: uniqueId, name: t.name, emoji: t.emoji, color: t.color, color2: t.color2 };
           data.instruments.push(inst);
-          const r = generateLessons(templateKey, uniqueId, weekCount, data.nextId);
+          const r = generateLessons(templateKey, uniqueId, weekCount, data.nextId, startDate, freq);
           data.lessons = data.lessons.concat(r.lessons);
           data.nextId = r.nextId;
           saveData(data);

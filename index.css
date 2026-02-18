@@ -1055,3 +1055,39 @@ select {
     background: rgba(136, 136, 136, 0.15);
   }
 }
+
+/* ---------- Frequency selector ---------- */
+.freq-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.freq-btn {
+  flex: 1;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.freq-btn:hover {
+  border-color: var(--accent-purple);
+}
+
+.freq-btn.active {
+  border-color: var(--accent-purple);
+  background: rgba(167, 139, 250, 0.15);
+  color: var(--accent-purple);
+}
+
+/* ---------- Preview date ---------- */
+.preview-item__date {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
