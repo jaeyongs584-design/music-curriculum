@@ -142,7 +142,7 @@
 
       function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-      function generateLessons(templateKey, weekCount, startId) {
+      function generateLessons(templateKey, instrumentId, weekCount, startId) {
         const t = TEMPLATES[templateKey];
         if (!t) return { lessons: [], nextId: startId };
         const today = new Date();
@@ -156,7 +156,7 @@
           const d = new Date(nm);
           d.setDate(d.getDate() + i * 7);
           lessons.push({
-            id: id++, instrument: templateKey, week: w.week,
+            id: id++, instrument: instrumentId, week: w.week,
             title: w.title, desc: w.desc, song: w.song,
             date: formatDate(d), status: 'upcoming'
           });
@@ -184,18 +184,7 @@
       }
 
       function initDefaultData() {
-        const instruments = [
-          { id: 'ocarina', name: '오카리나', emoji: '🎵', color: '#ff7b6b', color2: '#ff9e5e' },
-          { id: 'ukulele', name: '우쿨렐레', emoji: '🎸', color: '#4ecdc4', color2: '#45b7d1' },
-        ];
-        let nextId = 1;
-        let lessons = [];
-        instruments.forEach(inst => {
-          const r = generateLessons(inst.id, 20, nextId);
-          lessons = lessons.concat(r.lessons);
-          nextId = r.nextId;
-        });
-        const d = { instruments, lessons, nextId };
+        const d = { instruments: [], lessons: [], nextId: 1 };
         saveData(d);
         return d;
       }
@@ -481,17 +470,15 @@
       $regOvl.addEventListener('click', e => { if (e.target === $regOvl) closeRegModal(); });
 
       function renderRegStep1() {
-        const registered = new Set(data.instruments.map(i => i.id));
         let html = `<h2 class="modal__title">악기 등록</h2>
-        <p class="reg-subtitle">등록할 악기를 선택하세요</p>
+        <p class="reg-subtitle">등록할 악기를 선택하세요 (같은 악기도 여러 번 등록 가능)</p>
         <div class="reg-grid">`;
         Object.keys(TEMPLATES).forEach(key => {
           const t = TEMPLATES[key];
-          const disabled = registered.has(key);
-          html += `<button class="reg-card ${disabled ? 'reg-card--disabled' : ''}" data-key="${key}" ${disabled ? 'disabled' : ''}>
+          html += `<button class="reg-card" data-key="${key}">
           <span class="reg-card__emoji">${t.emoji}</span>
           <span class="reg-card__name">${t.name}</span>
-          <span class="reg-card__info">${disabled ? '등록됨' : `최대 ${t.max}주`}</span>
+          <span class="reg-card__info">최대 ${t.max}주</span>
         </button>`;
         });
         html += `<button class="reg-card reg-card--custom" data-key="__custom__">
@@ -502,7 +489,7 @@
       <div class="modal__btns"><button type="button" class="btn btn--cancel" id="reg-close">닫기</button></div>`;
         $regContent.innerHTML = html;
         $('reg-close').addEventListener('click', closeRegModal);
-        $regContent.querySelectorAll('.reg-card:not(.reg-card--disabled)').forEach(btn => {
+        $regContent.querySelectorAll('.reg-card').forEach(btn => {
           btn.addEventListener('click', () => {
             if (btn.dataset.key === '__custom__') { regCustom = true; renderRegStepCustom(); }
             else { regSelectedKey = btn.dataset.key; regCustom = false; renderRegStep2(); }
@@ -618,13 +605,14 @@
         $regContent.innerHTML = html;
         $('reg-back3').addEventListener('click', () => renderRegStep2());
         $('reg-confirm').addEventListener('click', () => {
-          const inst = { id: templateKey, name: t.name, emoji: t.emoji, color: t.color, color2: t.color2 };
+          const uniqueId = templateKey + '_' + Date.now();
+          const inst = { id: uniqueId, name: t.name, emoji: t.emoji, color: t.color, color2: t.color2 };
           data.instruments.push(inst);
-          const r = generateLessons(templateKey, weekCount, data.nextId);
+          const r = generateLessons(templateKey, uniqueId, weekCount, data.nextId);
           data.lessons = data.lessons.concat(r.lessons);
           data.nextId = r.nextId;
           saveData(data);
-          currentTab = templateKey;
+          currentTab = uniqueId;
           closeRegModal();
           showToast(`${t.emoji} ${t.name} ${weekCount}주 커리큘럼 등록 완료!`);
           renderTabs(); renderViews(); render();
