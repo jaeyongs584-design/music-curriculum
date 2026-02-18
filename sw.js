@@ -1,5 +1,5 @@
 // Service Worker for Music Curriculum Manager PWA
-const CACHE_NAME = 'music-curriculum-v2';
+const CACHE_NAME = 'music-curriculum-v3';
 const ASSETS = [
     './',
     './index.html',
@@ -28,18 +28,18 @@ self.addEventListener('activate', event => {
     self.clients.claim();
 });
 
-// Fetch – cache-first, then network fallback
+// Fetch – network-first, fallback to cache (ensures updates are always reflected)
 self.addEventListener('fetch', event => {
     event.respondWith(
-        caches.match(event.request).then(cached => {
-            if (cached) return cached;
-            return fetch(event.request).then(response => {
-                if (response.ok && event.request.url.startsWith(self.location.origin)) {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                }
-                return response;
-            }).catch(() => {
+        fetch(event.request).then(response => {
+            if (response.ok && event.request.url.startsWith(self.location.origin)) {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            }
+            return response;
+        }).catch(() => {
+            return caches.match(event.request).then(cached => {
+                if (cached) return cached;
                 if (event.request.mode === 'navigate') {
                     return caches.match('./index.html');
                 }
