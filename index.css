@@ -1085,6 +1085,36 @@ select {
   color: var(--accent-purple);
 }
 
+/* ---------- Day-of-week selector ---------- */
+.day-grid {
+  display: flex;
+  gap: 6px;
+}
+
+.day-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  min-width: 36px;
+}
+
+.day-btn:hover {
+  border-color: var(--accent-cyan);
+}
+
+.day-btn.active {
+  border-color: var(--accent-cyan);
+  background: rgba(78, 205, 196, 0.15);
+  color: var(--accent-cyan);
+}
+
 /* ---------- Preview date ---------- */
 .preview-item__date {
   font-size: 0.65rem;

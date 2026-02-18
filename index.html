@@ -142,29 +142,26 @@
 
       function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-      function calcDates(startDate, totalLessons, freq) {
+      const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+      function calcDates(startDate, totalLessons, days) {
+        if (!days || !days.length) days = [1];
+        const sorted = [...days].sort((a, b) => a - b);
         const dates = [];
-        const start = startDate ? new Date(startDate) : new Date();
-        if (!startDate) {
-          const dow = start.getDay();
-          start.setDate(start.getDate() + (dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow));
-        }
+        const start = startDate ? new Date(startDate + 'T00:00:00') : new Date();
         let cur = new Date(start);
-        for (let i = 0; i < totalLessons; i++) {
-          dates.push(new Date(cur));
-          if (freq === 1) { cur.setDate(cur.getDate() + 7); }
-          else if (freq === 2) { cur.setDate(cur.getDate() + (i % 2 === 0 ? 3 : 4)); }
-          else { const gaps = [2, 2, 3]; cur.setDate(cur.getDate() + gaps[i % 3]); }
+        while (dates.length < totalLessons) {
+          if (sorted.includes(cur.getDay())) dates.push(new Date(cur));
+          cur.setDate(cur.getDate() + 1);
         }
         return dates;
       }
 
-      function generateLessons(templateKey, instrumentId, weekCount, startId, startDate, freq) {
+      function generateLessons(templateKey, instrumentId, weekCount, startId, startDate, days) {
         const t = TEMPLATES[templateKey];
         if (!t) return { lessons: [], nextId: startId };
-        const f = freq || 1;
         const weeks = t.weeks.slice(0, weekCount);
-        const dates = calcDates(startDate, weeks.length, f);
+        const dates = calcDates(startDate, weeks.length, days);
         let id = startId;
         const lessons = weeks.map((w, i) => ({
           id: id++, instrument: instrumentId, week: w.week,
@@ -174,9 +171,8 @@
         return { lessons, nextId: id };
       }
 
-      function generateEmptyLessons(instrumentId, weekCount, startId, startDate, freq) {
-        const f = freq || 1;
-        const dates = calcDates(startDate, weekCount, f);
+      function generateEmptyLessons(instrumentId, weekCount, startId, startDate, days) {
+        const dates = calcDates(startDate, weekCount, days);
         let id = startId;
         const lessons = [];
         for (let i = 0; i < weekCount; i++) {
@@ -528,16 +524,19 @@
         </button>`;
         }
         html += `</div></div>
-        <div class="form-row">
-          <div class="form-group"><label>시작일</label>
-            <input type="date" id="reg-start-date" value="${todayStr}" />
+        <div class="form-group"><label>시작일</label>
+          <input type="date" id="reg-start-date" value="${todayStr}" />
+        </div>
+        <div class="form-group"><label>주당 횟수</label>
+          <div class="freq-grid">
+            <button type="button" class="freq-btn active" data-freq="1">주 1회</button>
+            <button type="button" class="freq-btn" data-freq="2">주 2회</button>
+            <button type="button" class="freq-btn" data-freq="3">주 3회</button>
           </div>
-          <div class="form-group"><label>주당 횟수</label>
-            <div class="freq-grid">
-              <button type="button" class="freq-btn active" data-freq="1">주 1회</button>
-              <button type="button" class="freq-btn" data-freq="2">주 2회</button>
-              <button type="button" class="freq-btn" data-freq="3">주 3회</button>
-            </div>
+        </div>
+        <div class="form-group"><label>수업 요일</label>
+          <div class="day-grid" id="reg-day-grid">
+            ${[1, 2, 3, 4, 5, 6, 0].map(d => `<button type="button" class="day-btn ${d === 1 ? 'active' : ''}" data-day="${d}">${DAY_NAMES[d]}</button>`).join('')}
           </div>
         </div>
         <div class="modal__btns">
@@ -546,7 +545,18 @@
         </div>`;
         $regContent.innerHTML = html;
 
-        let selWeeks = 4, selFreq = 1;
+        let selWeeks = 4, selFreq = 1, selDays = [1];
+
+        function updateDayGrid() {
+          const btns = $regContent.querySelectorAll('.day-btn');
+          btns.forEach(b => b.classList.remove('active'));
+          selDays = [];
+          // When freq changes, auto-select common patterns
+          if (selFreq === 1) selDays = [1];
+          else if (selFreq === 2) selDays = [1, 4];
+          else selDays = [1, 3, 5];
+          btns.forEach(b => { if (selDays.includes(Number(b.dataset.day))) b.classList.add('active'); });
+        }
 
         $regContent.querySelectorAll('.week-btn').forEach(btn => {
           btn.addEventListener('click', () => {
@@ -558,13 +568,31 @@
           btn.addEventListener('click', () => {
             $regContent.querySelectorAll('.freq-btn').forEach(x => x.classList.remove('active'));
             btn.classList.add('active'); selFreq = Number(btn.dataset.freq);
+            updateDayGrid();
+          });
+        });
+        $regContent.querySelectorAll('.day-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const day = Number(btn.dataset.day);
+            if (btn.classList.contains('active')) {
+              if (selDays.length > 1) { btn.classList.remove('active'); selDays = selDays.filter(d => d !== day); }
+            } else {
+              if (selDays.length < selFreq) { btn.classList.add('active'); selDays.push(day); }
+              else {
+                // Replace oldest selection
+                const oldest = selDays.shift();
+                $regContent.querySelector(`.day-btn[data-day="${oldest}"]`)?.classList.remove('active');
+                btn.classList.add('active'); selDays.push(day);
+              }
+            }
           });
         });
 
         $('reg-back').addEventListener('click', renderRegStep1);
         $('reg-next').addEventListener('click', () => {
+          if (!selDays.length) { showToast('요일을 선택해 주세요', 'error'); return; }
           const startDate = $('reg-start-date').value;
-          renderRegStep3(regSelectedKey, selWeeks, startDate, selFreq);
+          renderRegStep3(regSelectedKey, selWeeks, startDate, selDays);
         });
       }
 
@@ -585,16 +613,19 @@
           <div class="week-grid week-grid--small">
             ${[4, 8, 12, 16, 20, 24, 28, 32, 36, 40].map((w, i) => `<button type="button" class="week-btn week-btn--sm ${i === 0 ? 'active' : ''}" data-weeks="${w}">${w}주</button>`).join('')}
           </div></div>
-        <div class="form-row">
-          <div class="form-group"><label>시작일</label>
-            <input type="date" id="reg-cstart-date" value="${todayStr}" />
+        <div class="form-group"><label>시작일</label>
+          <input type="date" id="reg-cstart-date" value="${todayStr}" />
+        </div>
+        <div class="form-group"><label>주당 횟수</label>
+          <div class="freq-grid">
+            <button type="button" class="freq-btn active" data-freq="1">주 1회</button>
+            <button type="button" class="freq-btn" data-freq="2">주 2회</button>
+            <button type="button" class="freq-btn" data-freq="3">주 3회</button>
           </div>
-          <div class="form-group"><label>주당 횟수</label>
-            <div class="freq-grid">
-              <button type="button" class="freq-btn active" data-freq="1">주 1회</button>
-              <button type="button" class="freq-btn" data-freq="2">주 2회</button>
-              <button type="button" class="freq-btn" data-freq="3">주 3회</button>
-            </div>
+        </div>
+        <div class="form-group"><label>수업 요일</label>
+          <div class="day-grid" id="reg-cday-grid">
+            ${[1, 2, 3, 4, 5, 6, 0].map(d => `<button type="button" class="day-btn ${d === 1 ? 'active' : ''}" data-day="${d}">${DAY_NAMES[d]}</button>`).join('')}
           </div>
         </div>
         <div class="modal__btns">
@@ -603,7 +634,17 @@
         </div>`;
         $regContent.innerHTML = html;
 
-        let selEmoji = CUSTOM_EMOJIS[0], selColor = COLOR_PALETTE[0].color, selColor2 = COLOR_PALETTE[0].color2, selWeeks = 4, selFreq = 1;
+        let selEmoji = CUSTOM_EMOJIS[0], selColor = COLOR_PALETTE[0].color, selColor2 = COLOR_PALETTE[0].color2;
+        let selWeeks = 4, selFreq = 1, selDays = [1];
+
+        function updateDayGridC() {
+          const btns = $regContent.querySelectorAll('.day-btn');
+          btns.forEach(b => b.classList.remove('active'));
+          if (selFreq === 1) selDays = [1];
+          else if (selFreq === 2) selDays = [1, 4];
+          else selDays = [1, 3, 5];
+          btns.forEach(b => { if (selDays.includes(Number(b.dataset.day))) b.classList.add('active'); });
+        }
 
         $regContent.querySelectorAll('.emoji-btn').forEach(b => {
           b.addEventListener('click', () => {
@@ -627,6 +668,22 @@
           b.addEventListener('click', () => {
             $regContent.querySelectorAll('.freq-btn').forEach(x => x.classList.remove('active'));
             b.classList.add('active'); selFreq = Number(b.dataset.freq);
+            updateDayGridC();
+          });
+        });
+        $regContent.querySelectorAll('.day-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const day = Number(btn.dataset.day);
+            if (btn.classList.contains('active')) {
+              if (selDays.length > 1) { btn.classList.remove('active'); selDays = selDays.filter(d => d !== day); }
+            } else {
+              if (selDays.length < selFreq) { btn.classList.add('active'); selDays.push(day); }
+              else {
+                const oldest = selDays.shift();
+                $regContent.querySelector(`.day-btn[data-day="${oldest}"]`)?.classList.remove('active');
+                btn.classList.add('active'); selDays.push(day);
+              }
+            }
           });
         });
 
@@ -638,7 +695,7 @@
           const id = name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
           const inst = { id, name, emoji: selEmoji, color: selColor, color2: selColor2 };
           data.instruments.push(inst);
-          const r = generateEmptyLessons(id, selWeeks, data.nextId, startDate, selFreq);
+          const r = generateEmptyLessons(id, selWeeks, data.nextId, startDate, selDays);
           data.lessons = data.lessons.concat(r.lessons);
           data.nextId = r.nextId;
           saveData(data);
@@ -649,13 +706,13 @@
         });
       }
 
-      function renderRegStep3(templateKey, weekCount, startDate, freq) {
+      function renderRegStep3(templateKey, weekCount, startDate, days) {
         const t = TEMPLATES[templateKey];
         const preview = t.weeks.slice(0, weekCount);
-        const dates = calcDates(startDate, preview.length, freq || 1);
-        const freqLabel = freq === 3 ? '주 3회' : freq === 2 ? '주 2회' : '주 1회';
+        const dates = calcDates(startDate, preview.length, days || [1]);
+        const dayLabels = (days || [1]).sort((a, b) => a - b).map(d => DAY_NAMES[d]).join('·');
         let html = `<h2 class="modal__title">${t.emoji} ${t.name} · ${weekCount}주</h2>
-        <p class="reg-subtitle">📅 시작: ${koreanDate(startDate)} · ${freqLabel}</p>
+        <p class="reg-subtitle">📅 시작: ${koreanDate(startDate)} · 매주 ${dayLabels}</p>
         <div class="preview-list">`;
         preview.forEach((w, i) => {
           html += `<div class="preview-item">
@@ -676,7 +733,7 @@
           const uniqueId = templateKey + '_' + Date.now();
           const inst = { id: uniqueId, name: t.name, emoji: t.emoji, color: t.color, color2: t.color2 };
           data.instruments.push(inst);
-          const r = generateLessons(templateKey, uniqueId, weekCount, data.nextId, startDate, freq);
+          const r = generateLessons(templateKey, uniqueId, weekCount, data.nextId, startDate, days);
           data.lessons = data.lessons.concat(r.lessons);
           data.nextId = r.nextId;
           saveData(data);
