@@ -1,9 +1,10 @@
 // Service Worker for Music Curriculum Manager PWA
-const CACHE_NAME = 'music-curriculum-v1';
+const CACHE_NAME = 'music-curriculum-v2';
 const ASSETS = [
     './',
     './index.html',
     './index.css',
+    './templates.js',
     './manifest.json',
     './icon-192.svg',
     './icon-512.svg'
@@ -33,14 +34,12 @@ self.addEventListener('fetch', event => {
         caches.match(event.request).then(cached => {
             if (cached) return cached;
             return fetch(event.request).then(response => {
-                // Cache new resources on the fly (same-origin only)
                 if (response.ok && event.request.url.startsWith(self.location.origin)) {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                 }
                 return response;
             }).catch(() => {
-                // Offline fallback for navigation
                 if (event.request.mode === 'navigate') {
                     return caches.match('./index.html');
                 }
