@@ -1,11 +1,13 @@
 // Service Worker for Music Curriculum Manager PWA
-const CACHE_NAME = 'music-curriculum-v4';
+const CACHE_NAME = 'music-curriculum-v5';
 const ASSETS = [
     './',
     './index.html',
     './index.css',
     './jinbu.html',
     './jinbu.css',
+    './shorts_view.html',
+    './shorts.css',
     './templates.js',
     './manifest.json',
     './icon-192.svg',

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진부양조장 Shorts Animation</title>
+    <link rel="stylesheet" href="shorts.css">
+</head>
+
+<body>
+    <div class="shorts-container">
+
+        <!-- Scene 1: Intro (0-4s) -->
+        <div class="scene scene-1">
+            <div class="bg-overlay"></div>
+            <h1 class="text-main">60년의 고집</h1>
+            <h2 class="text-sub">평창의 숨결</h2>
+        </div>
+
+        <!-- Scene 2: Products (4-9s) -->
+        <div class="scene scene-2">
+            <div class="product-group">
+                <div class="bottle corn">🌽<br>옥수수</div>
+                <div class="bottle angelica">🌿<br>당귀</div>
+                <div class="bottle deodeok">🏔️<br>더덕</div>
+            </div>
+            <div class="text-pop">당신의 선택은?</div>
+        </div>
+
+        <!-- Scene 3: Sizzle (9-12s) -->
+        <div class="scene scene-3">
+            <div class="bubbles">
+                <span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="text-sizzle">톡! 쏘는<br>청량감</div>
+        </div>
+
+        <!-- Scene 4: Outro (12-15s) -->
+        <div class="scene scene-4">
+            <div class="logo-area">진부양조장</div>
+            <div class="cta-box">지금 검색하세요</div>
+        </div>
+
+        <!-- Progress Bar for Recording -->
+        <div class="progress-bar"></div>
+
+        <!-- Controls -->
+        <button id="replay-btn">🔄 Replay</button>
+    </div>
+
+    <script>
+        const container = document.querySelector('.shorts-container');
+        const replayBtn = document.getElementById('replay-btn');
+
+        replayBtn.addEventListener('click', () => {
+            // Clone and replace to restart CSS animations
+            const newContainer = container.cloneNode(true);
+            container.parentNode.replaceChild(newContainer, container);
+
+            // Re-attach event listener to new button
+            document.getElementById('replay-btn').addEventListener('click', () => {
+                location.reload(); // Simple reload for reliability
+            });
+        });
+    </script>
+</body>
+
+</html>
