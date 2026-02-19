@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진부양조장 - 60년 전통의 맛</title>
+    <meta name="description" content="평창 오대산 맑은 물로 빚은 3대 60년 전통의 진부양조장">
+    <link rel="stylesheet" href="jinbu.css">
+    <style>
+        /* Inline minimal styles for initial load */
+        body {
+            margin: 0;
+            background: #1a1a1a;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HERO SECTION -->
+    <section class="hero" id="home">
+        <div class="hero__bg"></div>
+        <div class="hero__overlay"></div>
+        <div class="hero__content">
+            <h1 class="hero__title">
+                <span class="fade-up delay-1">60년의 고집</span><br>
+                <span class="fade-up delay-2">평창의 숨결</span>
+            </h1>
+            <p class="hero__subtitle fade-up delay-3">3대를 이어온 깊은 맛, 진부양조장</p>
+            <div class="hero__scroll fade-up delay-4">
+                <span>SCROLL</span>
+                <div class="scroll-line"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- STORY SECTION -->
+    <section class="story" id="story">
+        <div class="container">
+            <div class="story__grid">
+                <div class="story__img reveal-left">
+                    <div class="img-placeholder">1965년 개업 사진</div>
+                </div>
+                <div class="story__text reveal-right">
+                    <h2 class="section-title">3대째 이어오는<br>장인 정신</h2>
+                    <p>
+                        1965년, 첫 술을 빚기 시작한 그날부터<br>
+                        진부양조장은 오직 '맛'과 '정성'만을 생각했습니다.
+                    </p>
+                    <p>
+                        평창 오대산의 맑고 깨끗한 물과<br>
+                        60년 세월이 만들어낸 깊은 발효 과학.
+                    </p>
+                    <p>
+                        할아버지의 손맛이 아버지에게,<br>
+                        그리고 이제 손자에게로 이어집니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRODUCTS SECTION -->
+    <section class="products" id="products">
+        <div class="container">
+            <h2 class="section-title text-center reveal-up">오대산의 선물</h2>
+            <p class="section-desc text-center reveal-up">자연이 빚고 사람이 완성한 명품 막걸리</p>
+
+            <div class="product-list">
+                <!-- Product 1: Corn -->
+                <article class="product-card reveal-up delay-1">
+                    <div class="product-card__bg" style="--accent: #f5cf6d;"></div>
+                    <div class="product-card__img">
+                        <div class="bottle-placeholder corn">🌽</div>
+                    </div>
+                    <div class="product-card__info">
+                        <h3>오대산 찰옥수수 생막걸리</h3>
+                        <p>고소한 옥수수의 풍미와 시원한 청량감.<br>진부양조장의 대표 스테디셀러.</p>
+                        <div class="tags">
+                            <span>#고소함</span><span>#청량감</span><span>#전통의맛</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Product 2: Angelica -->
+                <article class="product-card reveal-up delay-2">
+                    <div class="product-card__bg" style="--accent: #8bc34a;"></div>
+                    <div class="product-card__info">
+                        <h3>오대산 당귀 생막걸리</h3>
+                        <p>국내 최초 개발. 은은한 한약재 향과<br>깔끔한 뒷맛이 일품인 웰빙 막걸리.</p>
+                        <div class="tags">
+                            <span>#당귀향</span><span>#건강한맛</span><span>#깔끔함</span>
+                        </div>
+                    </div>
+                    <div class="product-card__img">
+                        <div class="bottle-placeholder angelica">🌿</div>
+                    </div>
+                </article>
+
+                <!-- Product 3: Deodeok -->
+                <article class="product-card reveal-up delay-3">
+                    <div class="product-card__bg" style="--accent: #d7ccc8;"></div>
+                    <div class="product-card__img">
+                        <div class="bottle-placeholder deodeok">🏔️</div>
+                    </div>
+                    <div class="product-card__info">
+                        <h3>오대산 더덕 생막걸리</h3>
+                        <p>더덕의 깊은 향과 알싸한 풍미.<br>마시는 순간 건강해지는 기분.</p>
+                        <div class="tags">
+                            <span>#더덕향</span><span>#프리미엄</span><span>#깊은맛</span>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACT / CTA -->
+    <section class="cta" id="contact">
+        <div class="cta__bg"></div>
+        <div class="cta__content reveal-scale">
+            <h2>진부양조장과 함께하세요</h2>
+            <p>강원도 평창군 진부면 진부중앙로 63</p>
+
+            <div class="btn-group">
+                <a href="tel:033-335-7013" class="btn btn--primary">📞 전화 문의하기</a>
+                <button class="btn btn--secondary" onclick="sharePage()">🔗 공유하기</button>
+            </div>
+
+            <footer class="footer">
+                &copy; 2026 Jinbu Brewery. All rights reserved.
+            </footer>
+        </div>
+    </section>
+
+    <script>
+        // Scroll Animation Observer
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right, .reveal-scale').forEach(el => observer.observe(el));
+
+        // Share Function
+        function sharePage() {
+            if (navigator.share) {
+                navigator.share({
+                    title: '진부양조장',
+                    text: '3대 60년 전통, 평창 오대산의 맑은 물로 빚은 진부양조장을 소개합니다.',
+                    url: window.location.href
+                });
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert('링크가 복사되었습니다!');
+            }
+        }
+    </script>
+</body>
+
+</html>
